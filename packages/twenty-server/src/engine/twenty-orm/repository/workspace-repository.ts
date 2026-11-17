@@ -71,6 +71,7 @@ import { resolveInheritedReadabilityParents } from 'src/engine/core-modules/reco
 import { type RolePermissionConfig } from 'src/engine/twenty-orm/types/role-permission-config.type';
 import { getRoleIdsFromRolePermissionConfig } from 'src/engine/twenty-orm/utils/get-role-ids-from-role-permission-config.util';
 import { resolveRowLevelPermissionRecordFilter } from 'src/engine/twenty-orm/utils/resolve-row-level-permission-record-filter.util';
+import { addOwnRecordsRestrictionToRecordFilter } from 'src/engine/twenty-orm/utils/add-own-records-restriction-to-record-filter.util';
 import { validateRLSPredicatesForRecords } from 'src/engine/twenty-orm/utils/validate-rls-predicates-for-records.util';
 import { getActiveValidationRules } from 'src/engine/twenty-orm/utils/get-active-validation-rules.util';
 import { validateRecordsAgainstValidationRulesOrThrow } from 'src/engine/twenty-orm/utils/validate-records-against-validation-rules.util';
@@ -118,6 +119,7 @@ import { WorkspaceSelectQueryBuilder } from 'src/engine/twenty-orm/query-builder
 import { compileNamedParameters } from 'src/engine/twenty-orm/sql/utils/compile-named-parameters.util';
 import { escapeIdentifier } from 'src/engine/workspace-manager/workspace-migration/utils/remove-sql-injection.util';
 import { serializeJsonbWriteValue } from 'src/engine/twenty-orm/sql/utils/serialize-jsonb-write-value.util';
+import { isUserAuthContext } from 'src/engine/core-modules/auth/guards/is-user-auth-context.guard';
 import {
   type WorkspaceRelationShape,
   type WorkspaceTableShape,
@@ -2500,11 +2502,18 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
           owningApplicationId: objectMetadata.applicationId,
         }),
       resolveRowLevelPermissionRecordFilter: (objectMetadata) =>
-        resolveRowLevelPermissionRecordFilter({
-          internalContext: this.options.internalContext,
-          authContext: this.options.authContext,
-          rolePermissionConfig: this.options.rolePermissionConfig,
-          objectMetadata,
+        addOwnRecordsRestrictionToRecordFilter({
+          objectPermissions:
+            this.options.objectRecordsPermissions[objectMetadata.id],
+          workspaceMemberId: isUserAuthContext(this.options.authContext)
+            ? this.options.authContext.workspaceMember.id
+            : undefined,
+          recordFilter: resolveRowLevelPermissionRecordFilter({
+            internalContext: this.options.internalContext,
+            authContext: this.options.authContext,
+            rolePermissionConfig: this.options.rolePermissionConfig,
+            objectMetadata,
+          }),
         }),
     };
   }

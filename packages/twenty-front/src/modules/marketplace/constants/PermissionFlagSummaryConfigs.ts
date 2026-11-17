@@ -16,6 +16,7 @@ import {
   IconKey,
   IconLock,
   IconMail,
+  IconPlayerPlay,
   IconPlug,
   IconSettings,
   IconSettingsAutomation,
@@ -64,6 +65,10 @@ export const PERMISSION_FLAG_SUMMARY_CONFIGS: Record<
   [PermissionFlagType.WORKFLOWS]: {
     Icon: IconSettingsAutomation,
     getLabel: () => t`Manage workflows`,
+  },
+  [PermissionFlagType.RUN_WORKFLOWS]: {
+    Icon: IconPlayerPlay,
+    getLabel: () => t`Run workflows from buttons`,
   },
   [PermissionFlagType.IMPERSONATE]: {
     Icon: IconSpy,

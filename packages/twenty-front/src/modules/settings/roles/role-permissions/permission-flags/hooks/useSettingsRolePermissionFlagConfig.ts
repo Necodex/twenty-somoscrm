@@ -8,6 +8,7 @@ import {
   IconKey,
   IconAppWindow,
   IconLock,
+  IconPlayerPlay,
   IconCode,
   IconSettings,
   IconSettingsAutomation,
@@ -100,6 +101,15 @@ export const useSettingsRolePermissionFlagConfig = ({
         Icon: IconSettingsAutomation,
         isRelevantForAgents: true,
         isRelevantForApiKeys: true,
+        isRelevantForUsers: true,
+      },
+      {
+        key: PermissionFlagType.RUN_WORKFLOWS,
+        name: t`Run Workflows`,
+        description: t`Trigger workflows from buttons without managing them`,
+        Icon: IconPlayerPlay,
+        isRelevantForAgents: false,
+        isRelevantForApiKeys: false,
         isRelevantForUsers: true,
       },
       {

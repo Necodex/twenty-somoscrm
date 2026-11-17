@@ -10,4 +10,5 @@ export type ObjectPermissions = {
   restrictedFields: RestrictedFieldsPermissions;
   rowLevelPermissionPredicates: RowLevelPermissionPredicate[];
   rowLevelPermissionPredicateGroups: RowLevelPermissionPredicateGroup[];
+  isLimitedToOwnRecords?: boolean;
 };

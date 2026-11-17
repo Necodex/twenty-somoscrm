@@ -47,7 +47,11 @@ import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filt
     oauthClient: { withUser: true, withoutUser: false },
     application: { withUser: true, withoutUser: false },
   }),
-  SettingsPermissionGuard(PermissionFlagType.WORKFLOWS),
+  // Run-only roles fill the forms of runs they can read; the other steps stay with workflow managers
+  SettingsPermissionGuard(
+    [PermissionFlagType.WORKFLOWS, PermissionFlagType.RUN_WORKFLOWS],
+    { match: 'any' },
+  ),
 )
 @UseFilters(
   PermissionsGraphqlApiExceptionFilter,
@@ -66,6 +70,7 @@ export class WorkflowVersionStepResolver {
 
   // Related to https://github.com/twentyhq/private-issues/issues/478
   @Query(() => ConnectedAccountHandleDTO, { nullable: true })
+  @UseGuards(SettingsPermissionGuard(PermissionFlagType.WORKFLOWS))
   async workflowStepConnectedAccountHandle(
     @Args('connectedAccountId', { type: () => UUIDScalarType }) id: string,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
@@ -158,6 +163,7 @@ export class WorkflowVersionStepResolver {
   }
 
   @Mutation(() => TestHttpRequestDTO)
+  @UseGuards(SettingsPermissionGuard(PermissionFlagType.WORKFLOWS))
   async testHttpRequest(
     @AuthWorkspace() workspace: WorkspaceEntity,
     @Args('input')

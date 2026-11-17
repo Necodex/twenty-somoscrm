@@ -458,4 +458,30 @@ describe('computePermissionIntersection', () => {
       expect(computePermissionIntersection([permissions])).toBe(permissions);
     });
   });
+
+  describe('own records limit', () => {
+    it('keeps the own records limit when any role has it', () => {
+      const basePermissions = {
+        canReadObjectRecords: true,
+        canUpdateObjectRecords: false,
+        canSoftDeleteObjectRecords: false,
+        canDestroyObjectRecords: false,
+        restrictedFields: {},
+        rowLevelPermissionPredicates: [],
+        rowLevelPermissionPredicateGroups: [],
+      };
+
+      const result = computePermissionIntersection([
+        { [objectMetadataId1]: { ...basePermissions } },
+        {
+          [objectMetadataId1]: {
+            ...basePermissions,
+            isLimitedToOwnRecords: true,
+          },
+        },
+      ]);
+
+      expect(result[objectMetadataId1].isLimitedToOwnRecords).toBe(true);
+    });
+  });
 });

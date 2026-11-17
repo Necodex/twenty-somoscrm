@@ -52,6 +52,7 @@ export const computePermissionIntersection = (
     const restrictedFields: Record<string, RestrictedFieldPermissions> = {};
     const rowLevelPermissionPredicatesPerRole: RowLevelPermissionPredicate[][] =
       [];
+    let isLimitedToOwnRecords = false;
 
     for (const permissions of permissionsArray) {
       const objPerm = permissions[objectMetadataId];
@@ -78,6 +79,9 @@ export const computePermissionIntersection = (
       rowLevelPermissionPredicatesPerRole.push(
         objPerm.rowLevelPermissionPredicates,
       );
+
+      isLimitedToOwnRecords =
+        isLimitedToOwnRecords || objPerm.isLimitedToOwnRecords === true;
 
       if (objPerm.restrictedFields) {
         for (const [fieldName, fieldPerm] of Object.entries(
@@ -116,6 +120,7 @@ export const computePermissionIntersection = (
         rowLevelPermissionPredicatesPerRole,
       ),
       rowLevelPermissionPredicateGroups: [],
+      ...(isLimitedToOwnRecords ? { isLimitedToOwnRecords } : {}),
     };
   }
 

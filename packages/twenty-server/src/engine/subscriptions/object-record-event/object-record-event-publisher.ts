@@ -57,6 +57,7 @@ import { getRoleIdsToIntersect } from 'src/engine/twenty-orm/utils/get-role-ids-
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
 import { WorkspaceEventBatch } from 'src/engine/workspace-event-emitter/types/workspace-event-batch.type';
 import { parseEventNameOrThrow } from 'src/engine/workspace-event-emitter/utils/parse-event-name';
+import { addOwnRecordsRestrictionToRecordFilter } from 'src/engine/twenty-orm/utils/add-own-records-restriction-to-record-filter.util';
 
 type StreamPermissionsContext = {
   flatRowLevelPermissionPredicateMaps: FlatRowLevelPermissionPredicateMaps;
@@ -537,9 +538,14 @@ export class ObjectRecordEventPublisher {
             : undefined,
         });
 
-        return isDefined(recordFilter) && Object.keys(recordFilter).length > 0
-          ? recordFilter
-          : null;
+        return addOwnRecordsRestrictionToRecordFilter({
+          objectPermissions: objectsPermissions[objectMetadata.id],
+          workspaceMemberId: subscriberAuthContext.workspaceMemberId,
+          recordFilter:
+            isDefined(recordFilter) && Object.keys(recordFilter).length > 0
+              ? recordFilter
+              : null,
+        });
       },
     };
   }

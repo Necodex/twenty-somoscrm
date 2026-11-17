@@ -20,8 +20,23 @@ import {
 } from 'src/engine/metadata-modules/permissions/permissions.exception';
 import { PermissionsService } from 'src/engine/metadata-modules/permissions/permissions.service';
 
+const throwPermissionDenied = (): never => {
+  throw new PermissionsException(
+    PermissionsExceptionMessage.PERMISSION_DENIED,
+    PermissionsExceptionCode.PERMISSION_DENIED,
+    {
+      userFriendlyMessage: msg`You do not have permission to access this feature. Please contact your workspace administrator for access.`,
+    },
+  );
+};
+
+type SettingsPermissionGuardOptions = {
+  match: 'all' | 'any';
+};
+
 export const SettingsPermissionGuard = (
   requiredPermissions: PermissionFlagType | PermissionFlagType[],
+  { match }: SettingsPermissionGuardOptions = { match: 'all' },
 ): Type<CanActivate> => {
   const requiredPermissionFlags = Array.isArray(requiredPermissions)
     ? requiredPermissions
@@ -59,15 +74,17 @@ export const SettingsPermissionGuard = (
             agentId: ctx.getContext().req.agentId,
           });
 
-        if (!hasPermission) {
-          throw new PermissionsException(
-            PermissionsExceptionMessage.PERMISSION_DENIED,
-            PermissionsExceptionCode.PERMISSION_DENIED,
-            {
-              userFriendlyMessage: msg`You do not have permission to access this feature. Please contact your workspace administrator for access.`,
-            },
-          );
+        if (hasPermission && match === 'any') {
+          return true;
         }
+
+        if (!hasPermission && match === 'all') {
+          throwPermissionDenied();
+        }
+      }
+
+      if (match === 'any') {
+        throwPermissionDenied();
       }
 
       return true;

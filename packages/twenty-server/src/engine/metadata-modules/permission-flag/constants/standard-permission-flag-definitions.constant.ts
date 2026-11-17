@@ -59,6 +59,11 @@ const STANDARD_PERMISSION_FLAG_METADATA: Record<
     description: 'Manage workflows',
     icon: 'IconSettingsAutomation',
   },
+  [PermissionFlagType.RUN_WORKFLOWS]: {
+    label: 'Run Workflows',
+    description: 'Trigger workflows from buttons without managing them',
+    icon: 'IconPlayerPlay',
+  },
   [PermissionFlagType.IMPERSONATE]: {
     label: 'Impersonate',
     description: 'Impersonate workspace users',

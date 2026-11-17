@@ -96,6 +96,61 @@ describe('SettingsPermissionGuard', () => {
     });
   });
 
+  describe('canActivate with several permission flags', () => {
+    const grantOnly =
+      (grantedFlag: PermissionFlagType) =>
+      async ({ setting }: { setting: PermissionFlagType }) =>
+        setting === grantedFlag;
+
+    it('should require every flag by default', async () => {
+      const GuardClass = SettingsPermissionGuard([
+        PermissionFlagType.WORKFLOWS,
+        PermissionFlagType.RUN_WORKFLOWS,
+      ]);
+      const allFlagsGuard = new GuardClass(mockPermissionsService);
+
+      mockPermissionsService.userHasWorkspaceSettingPermission.mockImplementation(
+        grantOnly(PermissionFlagType.RUN_WORKFLOWS),
+      );
+
+      await expect(
+        allFlagsGuard.canActivate(mockExecutionContext),
+      ).rejects.toThrow(PermissionsException);
+    });
+
+    it('should allow when any flag is granted in any mode', async () => {
+      const GuardClass = SettingsPermissionGuard(
+        [PermissionFlagType.WORKFLOWS, PermissionFlagType.RUN_WORKFLOWS],
+        { match: 'any' },
+      );
+      const anyFlagGuard = new GuardClass(mockPermissionsService);
+
+      mockPermissionsService.userHasWorkspaceSettingPermission.mockImplementation(
+        grantOnly(PermissionFlagType.RUN_WORKFLOWS),
+      );
+
+      await expect(
+        anyFlagGuard.canActivate(mockExecutionContext),
+      ).resolves.toBe(true);
+    });
+
+    it('should deny when no flag is granted in any mode', async () => {
+      const GuardClass = SettingsPermissionGuard(
+        [PermissionFlagType.WORKFLOWS, PermissionFlagType.RUN_WORKFLOWS],
+        { match: 'any' },
+      );
+      const anyFlagGuard = new GuardClass(mockPermissionsService);
+
+      mockPermissionsService.userHasWorkspaceSettingPermission.mockResolvedValue(
+        false,
+      );
+
+      await expect(
+        anyFlagGuard.canActivate(mockExecutionContext),
+      ).rejects.toThrow(PermissionsException);
+    });
+  });
+
   describe('canActivate with an application-only token', () => {
     let mockWorkspaceCacheService: { getOrRecompute: jest.Mock };
 

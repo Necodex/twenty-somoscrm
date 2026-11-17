@@ -1,7 +1,4 @@
-import {
-  GetCoreWorkflowVersionDocument,
-  GetCoreWorkflowVersionLegacyMappingDocument,
-} from '~/generated/graphql';
+import { GetCommandMenuWorkflowTriggerDocument } from '~/generated/graphql';
 import { useCallback } from 'react';
 
 import {
@@ -33,42 +30,36 @@ export const useEnrichHeadlessCommandContextApiWithWorkflowVersionTriggerInforma
           availabilityType,
           availabilityObjectMetadataId,
         }: EnrichParams): Promise<HeadlessCommandContextApi | undefined> => {
-          let resolvedCoreVersionId = coreWorkflowVersionId;
-
           if (
-            !isDefined(resolvedCoreVersionId) &&
-            isDefined(workflowVersionId)
+            !isDefined(coreWorkflowVersionId) &&
+            !isDefined(workflowVersionId)
           ) {
-            const { data } = await apolloCoreClient.query({
-              query: GetCoreWorkflowVersionLegacyMappingDocument,
-              variables: { workspaceWorkflowVersionId: workflowVersionId },
-              fetchPolicy: 'network-only',
-            });
-            resolvedCoreVersionId = data?.coreWorkflowVersion?.id;
-          }
-
-          if (!isDefined(resolvedCoreVersionId)) {
             return undefined;
           }
 
           const { data } = await apolloCoreClient.query({
-            query: GetCoreWorkflowVersionDocument,
-            variables: { coreWorkflowVersionId: resolvedCoreVersionId },
+            query: GetCommandMenuWorkflowTriggerDocument,
+            variables: {
+              coreWorkflowVersionId,
+              workspaceWorkflowVersionId: isDefined(coreWorkflowVersionId)
+                ? undefined
+                : workflowVersionId,
+            },
             fetchPolicy: 'network-only',
           });
-          const version = data?.coreWorkflowVersion;
+          const workflowTrigger = data?.commandMenuWorkflowTrigger;
 
-          if (!isDefined(version) || !isDefined(version.coreWorkflowId)) {
+          if (!isDefined(workflowTrigger)) {
             return undefined;
           }
 
           return {
             ...headlessEngineCommandContextApi,
-            workflowId: version.coreWorkflowId,
-            workflowVersionId: version.id,
-            coreWorkflowId: version.coreWorkflowId,
-            coreWorkflowVersionId: version.id,
-            trigger: version.trigger ?? null,
+            workflowId: workflowTrigger.coreWorkflowId,
+            workflowVersionId: workflowTrigger.coreWorkflowVersionId,
+            coreWorkflowId: workflowTrigger.coreWorkflowId,
+            coreWorkflowVersionId: workflowTrigger.coreWorkflowVersionId,
+            trigger: workflowTrigger.trigger ?? null,
             availabilityType,
             availabilityObjectMetadataId,
           };

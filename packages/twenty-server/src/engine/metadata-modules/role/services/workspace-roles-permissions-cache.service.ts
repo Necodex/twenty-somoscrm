@@ -136,6 +136,7 @@ export class WorkspaceRolesPermissionsCacheService extends WorkspaceCacheProvide
         let canUpdate = role.canUpdateAllObjectRecords;
         let canSoftDelete = role.canSoftDeleteAllObjectRecords;
         let canDestroy = role.canDestroyAllObjectRecords;
+        let isLimitedToOwnRecords = false;
         const restrictedFields: RestrictedFieldsPermissions = {};
 
         const isWorkspaceMemberObject =
@@ -154,6 +155,17 @@ export class WorkspaceRolesPermissionsCacheService extends WorkspaceCacheProvide
           canUpdate = hasWorkflowsPermissions;
           canSoftDelete = hasWorkflowsPermissions;
           canDestroy = hasWorkflowsPermissions;
+
+          // Run-only roles open the runs they started to fill form steps, and nothing else
+          if (
+            !hasWorkflowsPermissions &&
+            universalIdentifier ===
+              STANDARD_OBJECTS.workflowRun.universalIdentifier &&
+            isRolePermissionFlagGranted(PermissionFlagType.RUN_WORKFLOWS)
+          ) {
+            canRead = true;
+            isLimitedToOwnRecords = true;
+          }
         } else {
           if (isWorkspaceMemberObject) {
             const hasWorkspaceMembersPermissions = isRolePermissionFlagGranted(
@@ -256,6 +268,7 @@ export class WorkspaceRolesPermissionsCacheService extends WorkspaceCacheProvide
                 rowLevelPermissionPredicateGroup.objectMetadataId ===
                 objectMetadataId,
             ),
+          ...(isLimitedToOwnRecords ? { isLimitedToOwnRecords } : {}),
         };
       }
 

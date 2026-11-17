@@ -1,5 +1,5 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation } from '@nestjs/graphql';
+import { Args, Mutation, Query } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 
@@ -8,6 +8,8 @@ import { type FlatApplication } from 'src/engine/core-modules/application/types/
 import { type AuthContextUser } from 'src/engine/core-modules/auth/types/auth-context.type';
 import { PreventNestToAutoLogGraphqlErrorsFilter } from 'src/engine/core-modules/graphql/filters/prevent-nest-to-auto-log-graphql-errors.filter';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
+import { CommandMenuWorkflowTriggerDTO } from 'src/engine/core-modules/workflow/dtos/command-menu-workflow-trigger.dto';
+import { CommandMenuWorkflowTriggerArgs } from 'src/engine/core-modules/workflow/dtos/command-menu-workflow-trigger.input';
 import { RunCoreWorkflowVersionInput } from 'src/engine/core-modules/workflow/dtos/run-core-workflow-version.input';
 import { RunWorkflowVersionDTO } from 'src/engine/core-modules/workflow/dtos/run-workflow-version.dto';
 import { WorkflowQueryValidationGraphqlApiExceptionFilter } from 'src/engine/core-modules/workflow/filters/workflow-query-validation-graphql-api-exception.filter';
@@ -23,6 +25,7 @@ import { AuthUser } from 'src/engine/decorators/auth/auth-user.decorator';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import { AuthPrincipalGuard } from 'src/engine/guards/auth-principal.guard';
 import { SettingsPermissionGuard } from 'src/engine/guards/settings-permission.guard';
+import { PermissionsService } from 'src/engine/metadata-modules/permissions/permissions.service';
 import { PermissionsGraphqlApiExceptionFilter } from 'src/engine/metadata-modules/permissions/utils/permissions-graphql-api-exception.filter';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
@@ -44,7 +47,10 @@ import { type WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-membe
     oauthClient: { withUser: true, withoutUser: false },
     application: { withUser: true, withoutUser: false },
   }),
-  SettingsPermissionGuard(PermissionFlagType.WORKFLOWS),
+  SettingsPermissionGuard(
+    [PermissionFlagType.WORKFLOWS, PermissionFlagType.RUN_WORKFLOWS],
+    { match: 'any' },
+  ),
 )
 @UseFilters(
   PermissionsGraphqlApiExceptionFilter,
@@ -60,6 +66,7 @@ export class CoreWorkflowRunResolver {
     private readonly coreWorkflowRunnerService: CoreWorkflowRunnerService,
     private readonly coreWorkflowAccessService: CoreWorkflowAccessService,
     private readonly workspaceOrmManager: WorkspaceOrmManager,
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   @Mutation(() => RunWorkflowVersionDTO)
@@ -98,6 +105,22 @@ export class CoreWorkflowRunResolver {
       },
     );
 
+    const canManageWorkflows = await this.canManageWorkflows({
+      workspaceId,
+      userWorkspaceId,
+      callerApplicationId: callerApplication?.id,
+    });
+
+    // Run-only roles must not reach drafts or workflows that have no button
+    if (!canManageWorkflows) {
+      await this.coreWorkflowAccessService.assertCoreWorkflowVersionIsRunnableFromCommandMenuOrThrow(
+        {
+          workspaceId,
+          coreWorkflowVersionId,
+        },
+      );
+    }
+
     await this.coreWorkflowAccessService.assertCoreWorkflowVersionsAreStartableByApplicationOrThrow(
       {
         workspaceId,
@@ -118,6 +141,52 @@ export class CoreWorkflowRunResolver {
       workflowRunId: workflowRunId ?? undefined,
       payload: triggerPayload,
       source: createdBy,
+    });
+  }
+
+  @Query(() => CommandMenuWorkflowTriggerDTO, { nullable: true })
+  async commandMenuWorkflowTrigger(
+    @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @AuthUserWorkspaceId({ allowUndefined: true })
+    userWorkspaceId: string | undefined,
+    @AuthApplication({ allowUndefined: true })
+    callerApplication: FlatApplication | undefined,
+    @Args()
+    {
+      coreWorkflowVersionId,
+      workspaceWorkflowVersionId,
+    }: CommandMenuWorkflowTriggerArgs,
+  ): Promise<CommandMenuWorkflowTriggerDTO | null> {
+    const canManageWorkflows = await this.canManageWorkflows({
+      workspaceId,
+      userWorkspaceId,
+      callerApplicationId: callerApplication?.id,
+    });
+
+    return this.coreWorkflowAccessService.findCommandMenuWorkflowTrigger({
+      workspaceId,
+      userWorkspaceId,
+      coreWorkflowVersionId,
+      workspaceWorkflowVersionId,
+      mustBeRunnableFromCommandMenu: !canManageWorkflows,
+    });
+  }
+
+  private async canManageWorkflows({
+    workspaceId,
+    userWorkspaceId,
+    callerApplicationId,
+  }: {
+    workspaceId: string;
+    userWorkspaceId: string | undefined;
+    callerApplicationId: string | undefined;
+  }): Promise<boolean> {
+    return this.permissionsService.userHasWorkspaceSettingPermission({
+      userWorkspaceId,
+      workspaceId,
+      setting: PermissionFlagType.WORKFLOWS,
+      applicationId: callerApplicationId,
+      agentId: undefined,
     });
   }
 }

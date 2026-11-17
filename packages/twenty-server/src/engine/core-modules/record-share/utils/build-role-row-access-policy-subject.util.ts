@@ -13,6 +13,7 @@ import { type FlatRowLevelPermissionPredicateMaps } from 'src/engine/metadata-mo
 import { type FlatRowLevelPermissionPredicateGroupMaps } from 'src/engine/metadata-modules/row-level-permission-predicate/types/flat-row-level-permission-predicate-group-maps.type';
 import { type RowAccessPolicySubject } from 'src/engine/twenty-orm/types/row-access-policy.type';
 import { buildRowLevelPermissionRecordFilter } from 'src/engine/twenty-orm/utils/build-row-level-permission-record-filter.util';
+import { addOwnRecordsRestrictionToRecordFilter } from 'src/engine/twenty-orm/utils/add-own-records-restriction-to-record-filter.util';
 
 export const buildRoleRowAccessPolicySubject = ({
   roleId,
@@ -65,9 +66,14 @@ export const buildRoleRowAccessPolicySubject = ({
         workspaceMember,
       });
 
-      return isDefined(recordFilter) && Object.keys(recordFilter).length > 0
-        ? recordFilter
-        : null;
+      return addOwnRecordsRestrictionToRecordFilter({
+        objectPermissions: rolesPermissions[roleIds[0]]?.[objectMetadata.id],
+        workspaceMemberId: workspaceMember?.id,
+        recordFilter:
+          isDefined(recordFilter) && Object.keys(recordFilter).length > 0
+            ? recordFilter
+            : null,
+      });
     },
   };
 };
